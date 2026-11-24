@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Songs Around the Fire</title><style>body{margin:auto;max-width:760px;padding:18px;background:#19221c;color:#f5e7cc;font:17px system-ui}header{text-align:center;padding:24px 0;background:radial-gradient(ellipse at bottom,#654329,transparent 75%)}h1{font: bold 38px Georgia;margin:8px}h2{font: bold 25px Georgia}small,p{color:#d0c6b1}button,input,select{font:inherit;border:1px solid #68705b;border-radius:9px;padding:11px;background:#303c30;color:#fff}button{cursor:pointer}button.active,.primary{background:#e4b875;color:#211c15}nav{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}section,article{background:#253027;border:1px solid #455343;border-radius:12px;padding:14px;margin:10px 0}a{color:#f2c780}input{box-sizing:border-box;max-width:100%;width:100%;margin:5px 0}article strong{display:block}article small{display:block;margin:4px 0 10px}.actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}.muted{font-size:13px;color:#c0b8a5}#status{text-align:center}button:disabled{opacity:.5}label{display:block;margin-top:8px}</style><header><div style="font-size:48px">🔥</div><h1>Songs Around the Fire</h1><p>Kendal’s Birthday • November 28, 2026</p><small>Grab an instrument. Raise a glass. Sing along.</small></header><p id="status" class="muted"></p><section id="now"></section><nav id="nav"></nav><main id="main"></main><footer><p class="muted">Chord and lyric links open external search results. Choose the arrangement announced by the musicians.</p></footer><script type="module">
+const seed=`Pancho and Lefty|Townes Van Zandt
+How Lucky|John Prine
+Sweet Caroline|Neil Diamond
+I Am a Man of Constant Sorrow|The Soggy Bottom Boys
+Wagon Wheel|Old Crow Medicine Show
+The Weight|The Band
+Take Me Home, Country Roads|John Denver
+Free Fallin'|Tom Petty
+Spanish Pipedream|John Prine
+Angel from Montgomery|John Prine
+Paradise|John Prine
+Illegal Smile|John Prine
+Fish and Whistle|John Prine
+Clay Pigeons|Blaze Foley
+If I Needed You|Townes Van Zandt
+To Live Is to Fly|Townes Van Zandt
+Blue Eyes Crying in the Rain|Willie Nelson
+On the Road Again|Willie Nelson
+Folsom Prison Blues|Johnny Cash
+Ring of Fire|Johnny Cash
+Me and Bobby McGee|Janis Joplin
+Jolene|Dolly Parton
+The Gambler|Kenny Rogers
+Friends in Low Places|Garth Brooks
+Amarillo by Morning|George Strait
+Tennessee Whiskey|Chris Stapleton
+Cover Me Up|Jason Isbell
+Feathered Indians|Tyler Childers
+Follow You to Virgie|Tyler Childers
+Atlantic City|The Band
+Friend of the Devil|Grateful Dead
+Ripple|Grateful Dead
+Have You Ever Seen the Rain|Creedence Clearwater Revival
+Bad Moon Rising|Creedence Clearwater Revival
+Brown Eyed Girl|Van Morrison
+Into the Mystic|Van Morrison
+Stand by Me|Ben E. King
+Lean on Me|Bill Withers
+Let It Be|The Beatles
+Hey Jude|The Beatles
+American Pie|Don McLean
+Heart of Gold|Neil Young
+Harvest Moon|Neil Young
+Wish You Were Here|Pink Floyd
+Wildflowers|Tom Petty
+Learning to Fly|Tom Petty
+Rocky Top|The Osborne Brothers
+Will the Circle Be Unbroken|Traditional
+I'll Fly Away|Albert E. Brumley
+Amazing Grace|Traditional`.split('\n').map((s,i)=>{let [title,artist]=s.split('|');return {id:'s'+i,title,artist}});
+const config = null; // Replace null with Firebase web app configuration.
+let db,auth,api,admin=false,uid=localStorage.campfireUid||(localStorage.campfireUid=crypto.randomUUID()),tab='Songbook',query='',state={songs:{},requests:{},queue:{},history:{},now:null};
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+try{if(!config)state=JSON.parse(localStorage.campfireState)||state}catch{}
+const entries=x=>Object.entries(x||{}), links=s=>`<a target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(s.title+' '+s.artist+' chords lyrics')}">Chords + lyrics ↗</a>`;
+async function put(path,value){try{if(db){await api.set(api.ref(db,'party/'+path),value)}else{let p=path.split('/'),o=state;while(p.length>1){let k=p.shift();o=o[k]||(o[k]={})}if(value===null)delete o[p[0]];else o[p[0]]=value;localStorage.campfireState=JSON.stringify(state);render()}}catch(e){alert('Could not save: '+e.message)}}
+const songCard=(s,extra='')=>`<article><strong>${esc(s.title)}</strong><small>${esc(s.artist)} ${s.key?' · Key '+esc(s.key):''} ${s.capo!==undefined?' · Capo '+esc(s.capo):''}</small><div class="actions">${links(s)} ${extra}</div></article>`;
+let actions={};function btn(label,fn,cls=''){let id=crypto.randomUUID();actions[id]=fn;return `<button class="${cls}" data-act="${id}">${esc(label)}</button>`}document.addEventListener('click',e=>{let b=e.target.closest('[data-act]');if(b)actions[b.dataset.act]?.()});
+function request(s){tab='Request';render();$('title').value=s.title;$('artist').value=s.artist}
+async function play(s){let key=prompt('Key (optional)',s.key||'');if(key===null)return;let capo=prompt('Capo fret (optional)',s.capo??'');if(capo===null)return;let n={title:s.title,artist:s.artist||'',key,capo,at:Date.now()};await put('now',n);await put('history/'+crypto.randomUUID(),n)}
+function render(){actions={};$('status').textContent=db?'Live shared songbook': 'Preview mode • requests stay on this device';$('now').innerHTML='<small>NOW PLAYING</small>'+ (state.now?songCard(state.now):'<h2>Waiting for the first song</h2>');$('nav').innerHTML=['Songbook','Request','Up Next','History','Musicians'].map(t=>btn(t,()=>{tab=t;render()},tab===t?'active':'')).join('');let m=$('main');let songs=[...seed,...Object.values(state.songs||{})];let req=entries(state.requests).sort((a,b)=>Object.keys(b[1].votes||{}).length-Object.keys(a[1].votes||{}).length);let queue=entries(state.queue).sort((a,b)=>a[1].at-b[1].at);if(tab==='Songbook'){m.innerHTML='<input id="search" placeholder="Search songs or artists" value="'+esc(query)+'"><div id="songs"></div>';function filter(){ $('songs').innerHTML=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes(query.toLowerCase())).map(s=>songCard(s,btn('Request',()=>request(s))+(admin?btn('Play',()=>play(s)):''))).join('')} $('search').oninput=e=>{query=e.target.value;filter()};filter()}else if(tab==='Request'){m.innerHTML=`<section><h2>Request a song</h2><form id="form"><label>Song title<input id="title" required maxlength="150"></label><label>Artist<input id="artist" maxlength="150"></label><label>Your name (optional)<input id="name" maxlength="80"></label><button class="primary">Submit request</button></form></section><h2>Requests</h2>`+req.map(([id,s])=>songCard(s,`<small>Requested by ${esc(s.name||'Guest')}</small>`+btn((s.votes?.[uid]?'✓ ':'')+'Vote · '+Object.keys(s.votes||{}).length,()=>put('requests/'+id+'/votes/'+uid,s.votes?.[uid]?null:true))+(admin?btn('Queue',async()=>{await put('queue/'+id,{title:s.title,artist:s.artist,at:Date.now()});await put('requests/'+id,null)})+btn('Dismiss',()=>put('requests/'+id,null)) :''))).join('');$('form').onsubmit=async e=>{e.preventDefault();let title=$('title').value.trim();if(!title)return;await put('requests/'+crypto.randomUUID(),{title,artist:$('artist').value.trim(),name:$('name').value.trim(),at:Date.now()});render()}}else if(tab==='Up Next'){m.innerHTML='<h2>Up next</h2>'+ (queue.length?queue.map(([id,s])=>songCard(s,admin?btn('Play',async()=>{await play(s)})+btn('Remove',()=>put('queue/'+id,null)):'')).join(''):'<p>No songs queued yet.</p>')}else if(tab==='History'){m.innerHTML='<h2>Played tonight</h2>'+entries(state.history).sort((a,b)=>b[1].at-a[1].at).map(([id,s])=>songCard(s)).join('')}else{m.innerHTML='<h2>Musician’s corner</h2>'+(!admin?'<p>Sign in to manage the party.</p><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password">'+btn(db?'Sign in':'Enable local demo controls',async()=>{try{if(db)await api.signInWithEmailAndPassword(auth,$('email').value,$('password').value);else{admin=true;render()}}catch(e){alert(e.message)}}):btn('Sign out',async()=>{if(db)await api.signOut(auth);else{admin=false;render()}})+btn('Clear now playing',()=>put('now',null))+'<section><h2>Add to songbook</h2><input id="newTitle" placeholder="Song title"><input id="newArtist" placeholder="Artist">'+btn('Add song',()=>{let title=$('newTitle').value.trim();if(title)put('songs/'+crypto.randomUUID(),{title,artist:$('newArtist').value.trim()})})+'</section><p>Use Songbook to play songs, Requests to approve them, and Up Next to manage the queue.</p>')}}
+render();if(config){try{let app=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js'),a=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'),d=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js');api={...a,...d};let instance=app.initializeApp(config);auth=a.getAuth(instance);db=d.getDatabase(instance);a.onAuthStateChanged(auth,async user=>{if(!user){await a.signInAnonymously(auth);return}uid=user.uid;admin=!user.isAnonymous&&(await d.get(d.ref(db,'admins/'+uid))).val()===true;render()});d.onValue(d.ref(db,'party'),snap=>{state=snap.val()||{};render()},e=>{$('status').textContent='Database unavailable: '+e.message})}catch(e){$('status').textContent='Connection failed: '+e.message}}
+</script></html>
