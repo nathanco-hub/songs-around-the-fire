@@ -4,58 +4,16 @@ How Lucky|John Prine
 Sweet Caroline|Neil Diamond
 I Am a Man of Constant Sorrow|The Soggy Bottom Boys
 Wagon Wheel|Old Crow Medicine Show
-The Weight|The Band
 Take Me Home, Country Roads|John Denver
-Free Fallin'|Tom Petty
-Spanish Pipedream|John Prine
-Angel from Montgomery|John Prine
-Paradise|John Prine
-Illegal Smile|John Prine
-Fish and Whistle|John Prine
-Clay Pigeons|Blaze Foley
-If I Needed You|Townes Van Zandt
-To Live Is to Fly|Townes Van Zandt
-Blue Eyes Crying in the Rain|Willie Nelson
-On the Road Again|Willie Nelson
-Folsom Prison Blues|Johnny Cash
-Ring of Fire|Johnny Cash
-Me and Bobby McGee|Janis Joplin
-Jolene|Dolly Parton
-The Gambler|Kenny Rogers
-Friends in Low Places|Garth Brooks
-Amarillo by Morning|George Strait
 Tennessee Whiskey|Chris Stapleton
-Cover Me Up|Jason Isbell
-Feathered Indians|Tyler Childers
-Follow You to Virgie|Tyler Childers
-Atlantic City|The Band
-Friend of the Devil|Grateful Dead
-Ripple|Grateful Dead
-Have You Ever Seen the Rain|Creedence Clearwater Revival
-Bad Moon Rising|Creedence Clearwater Revival
-Brown Eyed Girl|Van Morrison
-Into the Mystic|Van Morrison
-Stand by Me|Ben E. King
-Lean on Me|Bill Withers
-Let It Be|The Beatles
-Hey Jude|The Beatles
-American Pie|Don McLean
-Heart of Gold|Neil Young
-Harvest Moon|Neil Young
-Wish You Were Here|Pink Floyd
-Wildflowers|Tom Petty
-Learning to Fly|Tom Petty
-Rocky Top|The Osborne Brothers
-Will the Circle Be Unbroken|Traditional
-I'll Fly Away|Albert E. Brumley
-Amazing Grace|Traditional`.split('\n').map((s,i)=>{let [title,artist]=s.split('|');return {id:'s'+i,title,artist}});
+Ring of Fire|Johnny Cash`.split('\n').map((s,i)=>{let [title,artist]=s.split('|');return {id:'s'+i,title,artist}});
 const config = {apiKey:"AIzaSyABDvNTCF-RKqaexx55zwi0y5RMQeqbruc",authDomain:"songs-around-the-fire.firebaseapp.com",projectId:"songs-around-the-fire",storageBucket:"songs-around-the-fire.firebasestorage.app",messagingSenderId:"702264483032",appId:"1:702264483032:web:372ce364c7c3cb8ba7cbad",databaseURL:"https://songs-around-the-fire-default-rtdb.firebaseio.com"};
 const ADMIN_UID='BlcZxvdXNle9qffaeM1QHK99CEB2';
 let ready=false, connectionStatus='Connecting to live songbook…';
 let db,auth,api,admin=false,uid=localStorage.campfireUid||(localStorage.campfireUid=crypto.randomUUID()),tab='Songbook',query='',state={songs:{},requests:{},queue:{},history:{},now:null};
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 try{if(!config)state=JSON.parse(localStorage.campfireState)||state}catch{}
-const entries=x=>Object.entries(x||{}), links=s=>['Lyrics','Chords'].map(kind=>`<a target="_blank" rel="noopener noreferrer" href="https://www.google.com/search?q=${encodeURIComponent(s.title+' '+(s.artist||'')+' '+kind.toLowerCase())}">${kind} ↗</a>`).join(' · ');
+const entries=x=>Object.entries(x||{}), links=s=>['Lyrics','Chords','Alternative chords'].map(kind=>`<a target="_blank" rel="noopener noreferrer" href="https://www.google.com/search?q=${encodeURIComponent(s.title+' '+(s.artist||'')+' '+(kind==='Alternative chords'?'free guitar chords -site:ultimate-guitar.com':kind==='Chords'?'free community guitar chords':kind.toLowerCase()))}">${kind} ↗</a>`).join(' · ');
 const norm=s=>String(s||'').normalize('NFKD').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
 const same=(a,b)=>norm(a.title)===norm(b.title)&&(!norm(a.artist)||!norm(b.artist)||norm(a.artist)===norm(b.artist));
 const count=s=>Object.keys(s.votes||{}).length;
@@ -68,6 +26,6 @@ async function play(s){if(busy||!admin||!ready)return;let key=prompt('Key (optio
 function vote(id,s){return put('requests/'+id+'/votes/'+uid,s.votes?.[uid]?null:true)}
 function ranked(){let r=entries(state.requests).map(([id,s])=>({id,s,field:'requests'}));for(let [id,s] of entries(state.queue))if(!r.some(x=>same(x.s,s)))r.push({id,s,field:'queue'});return r.sort((a,b)=>count(b.s)-count(a.s)||(a.s.at||0)-(b.s.at||0))}
 function queueCards(items){return items.length?items.map(({id,s,field},i)=>songCard(s,`<small>#${i+1} · ${count(s)} votes · Requested by ${esc(s.name||'Guest')}</small>`+(field==='requests'?btn((s.votes?.[uid]?'✓ ':'')+'Vote · '+count(s),()=>vote(id,s)):'')+(admin?btn('Play now',()=>play(s),'primary')+btn('Dismiss',()=>put(field+'/'+id,null)):''))).join(''):'<p>No songs requested yet.</p>'}
-function render(){actions={};$('status').textContent=connectionStatus;$('now').innerHTML='<small>NOW PLAYING</small>'+ (state.now?songCard(state.now,admin?btn('End song',()=>put('now',null)):''):'<h2>Waiting for the first song</h2>');$('nav').innerHTML=['Songbook','Request','Up Next','History','Musicians'].map(t=>btn(t,()=>{tab=t;render()},tab===t?'active':'')).join('');let m=$('main'),songs=[...seed,...Object.values(state.songs||{})],queue=ranked();if(tab==='Songbook'){m.innerHTML='<input id="search" placeholder="Search songs or artists" value="'+esc(query)+'"><div id="songs"></div>';function filter(){ $('songs').innerHTML=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes(query.toLowerCase())).map(s=>songCard(s,btn('Request',()=>request(s))+(admin?btn('Play now',()=>play(s)):''))).join('')} $('search').oninput=e=>{query=e.target.value;filter()};filter()}else if(tab==='Request'){m.innerHTML=`<section><h2>Request a song</h2><p>Requests automatically join Up Next. Vote for an existing request instead of adding it again.</p><form id="form"><label>Song title<input id="title" required maxlength="150" value="${esc(draft.title)}"></label><label>Artist<input id="artist" maxlength="150" value="${esc(draft.artist)}"></label><label>Your name (optional)<input id="name" maxlength="80" value="${esc(draft.name)}"></label><button class="primary">Submit request</button></form></section><h2>Requests</h2>`+queueCards(queue);for(let k of ['title','artist','name'])$(k).oninput=e=>draft[k]=e.target.value;$('form').onsubmit=async e=>{e.preventDefault();if(busy||!ready)return;let title=draft.title.trim(),artist=draft.artist.trim(),name=draft.name.trim();if(!title)return;let existing=ranked().find(x=>same(x.s,{title,artist}));if(existing){if(existing.field==='requests'&&!existing.s.votes?.[uid]&&confirm('Already requested! Vote for it instead?'))await vote(existing.id,existing.s);tab='Up Next';render();return}busy=true;try{if(await put('requests/'+crypto.randomUUID(),{title,artist,name,at:Date.now()})){draft={title:'',artist:'',name};tab='Up Next';render()}}finally{busy=false}}}else if(tab==='Up Next'){m.innerHTML='<h2>Up next</h2><p>Ranked by votes, then request time. Musicians may choose any song.</p>'+queueCards(queue)}else if(tab==='History'){m.innerHTML='<h2>Played tonight</h2>'+entries(state.history).sort((a,b)=>b[1].at-a[1].at).map(([id,s])=>songCard(s)).join('')}else{m.innerHTML='<h2>Musician’s corner</h2>'+(!admin?'<p>Sign in to manage the party.</p><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password">'+btn('Sign in',async()=>{try{if(!ready)throw new Error('Still connecting');await api.signInWithEmailAndPassword(auth,$('email').value,$('password').value)}catch(e){alert(e.message)}}):btn('Sign out',async()=>{await api.signOut(auth)})+btn('End song',()=>put('now',null))+'<h2>Live requests & queue</h2>'+queueCards(queue)+'<section><h2>Play from songbook</h2><input id="adminSearch" placeholder="Find a song"><div id="adminSongs"></div></section><section><h2>Add to songbook</h2><input id="newTitle" placeholder="Song title"><input id="newArtist" placeholder="Artist">'+btn('Add song',()=>{let title=$('newTitle').value.trim();if(title)put('songs/'+crypto.randomUUID(),{title,artist:$('newArtist').value.trim()})})+'</section><section><h2>Reset party</h2><p>Clears requests, votes, queue, history and Now Playing. Keeps the songbook.</p>'+btn('Reset party',async()=>{if(!confirm('Clear all party activity for everyone? This cannot be undone.'))return;try{await api.update(api.ref(db,'party'),{requests:null,queue:null,history:null,now:null})}catch(e){alert(e.message)}})+'</section>');if(admin){let filter=()=>{$('adminSongs').innerHTML=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes($('adminSearch').value.toLowerCase())).map(s=>songCard(s,btn('Play now',()=>play(s)))).join('')};$('adminSearch').oninput=filter;filter()}}}
+function render(){actions={};$('status').textContent=connectionStatus;$('now').innerHTML='<small>NOW PLAYING</small>'+ (state.now?songCard(state.now,admin?btn('End song',()=>put('now',null)):''):'<h2>Waiting for the first song</h2>');$('nav').innerHTML=['Songbook','Request','Up Next','History','Musicians'].map(t=>btn(t,()=>{tab=t;render()},tab===t?'active':'')).join('');let m=$('main'),songs=seed,queue=ranked();if(tab==='Songbook'){m.innerHTML='<h2>Kendal’s Songbook</h2><input id="search" placeholder="Search songs or artists" value="'+esc(query)+'"><div id="songs"></div>';function filter(){ $('songs').innerHTML=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes(query.toLowerCase())).map(s=>songCard(s,btn('Request',()=>request(s))+(admin?btn('Play now',()=>play(s)):''))).join('')} $('search').oninput=e=>{query=e.target.value;filter()};filter()}else if(tab==='Request'){m.innerHTML=`<section><h2>Request a song</h2><p>Requests automatically join Up Next. Vote for an existing request instead of adding it again.</p><form id="form"><label>Song title<input id="title" required maxlength="150" value="${esc(draft.title)}"></label><label>Artist<input id="artist" maxlength="150" value="${esc(draft.artist)}"></label><label>Your name (optional)<input id="name" maxlength="80" value="${esc(draft.name)}"></label><button class="primary">Submit request</button></form></section><h2>Requests</h2>`+queueCards(queue);for(let k of ['title','artist','name'])$(k).oninput=e=>draft[k]=e.target.value;$('form').onsubmit=async e=>{e.preventDefault();if(busy||!ready)return;let title=draft.title.trim(),artist=draft.artist.trim(),name=draft.name.trim();if(!title)return;let existing=ranked().find(x=>same(x.s,{title,artist}));if(existing){if(existing.field==='requests'&&!existing.s.votes?.[uid]&&confirm('Already requested! Vote for it instead?'))await vote(existing.id,existing.s);tab='Up Next';render();return}busy=true;try{if(await put('requests/'+crypto.randomUUID(),{title,artist,name,at:Date.now()})){draft={title:'',artist:'',name};tab='Up Next';render()}}finally{busy=false}}}else if(tab==='Up Next'){m.innerHTML='<h2>Up next</h2><p>Ranked by votes, then request time. Musicians may choose any song.</p>'+queueCards(queue)}else if(tab==='History'){m.innerHTML='<h2>Played tonight</h2>'+entries(state.history).sort((a,b)=>b[1].at-a[1].at).map(([id,s])=>songCard(s)).join('')}else{m.innerHTML='<h2>Musician’s corner</h2>'+(!admin?'<p>Sign in to manage the party.</p><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password">'+btn('Sign in',async()=>{try{if(!ready)throw new Error('Still connecting');await api.signInWithEmailAndPassword(auth,$('email').value,$('password').value)}catch(e){alert(e.message)}}):btn('Sign out',async()=>{await api.signOut(auth)})+btn('End song',()=>put('now',null))+'<h2>Live requests & queue</h2>'+queueCards(queue)+'<section><h2>Play from songbook</h2><input id="adminSearch" placeholder="Find a song"><div id="adminSongs"></div></section><section><h2>Reset party</h2><p>Clears requests, votes, queue, history and Now Playing. Keeps the songbook.</p>'+btn('Reset party',async()=>{if(!confirm('Clear all party activity for everyone? This cannot be undone.'))return;try{await api.update(api.ref(db,'party'),{requests:null,queue:null,history:null,now:null})}catch(e){alert(e.message)}})+'</section>');if(admin){let filter=()=>{$('adminSongs').innerHTML=songs.filter(s=>(s.title+' '+s.artist).toLowerCase().includes($('adminSearch').value.toLowerCase())).map(s=>songCard(s,btn('Play now',()=>play(s)))).join('')};$('adminSearch').oninput=filter;filter()}}}
 render();try{let app=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js'),a=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'),d=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js');api={...a,...d};let instance=app.initializeApp(config);auth=a.getAuth(instance);db=d.getDatabase(instance);let stop; a.onAuthStateChanged(auth,async user=>{if(stop){stop();stop=null}ready=false;admin=false;if(!user){connectionStatus='Connecting…';render();try{await a.signInAnonymously(auth)}catch(e){connectionStatus='Sign-in failed: '+e.message;render()}return}uid=user.uid;admin=!user.isAnonymous&&uid===ADMIN_UID;stop=d.onValue(d.ref(db,'party'),snap=>{state=snap.val()||{};ready=true;connectionStatus='Live shared songbook'+(admin?' • Musician signed in':'');render()},e=>{ready=false;connectionStatus='Database unavailable: '+e.message;render()})});}catch(e){connectionStatus='Connection failed: '+e.message;render()}
 </script></html>
